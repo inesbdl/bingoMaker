@@ -1,0 +1,50 @@
+body {
+    font-family: Arial, sans-serif;
+    padding: 20px;
+  }
+  label {
+    display: block;
+    margin-top: 10px;
+  }
+  input, button {
+    padding: 5px;
+    margin-top: 5px;
+    width: 100%;
+  }
+  button {
+    padding: 10px 15px;
+    background-color: lightblue;
+    border: none;
+    cursor: pointer;
+    margin-top: 20px;
+  }
+  .form-group {
+    margin-bottom: 15px;
+  }
+  .container {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+  .drop-zone {
+    width: 100%;
+    padding: 20px;
+    margin-top: 10px;
+    border: 2px dashed #ccc;
+    text-align: center;
+    color: #999;
+    cursor: pointer;
+  }
+  .drop-zone.dragover {
+    background-color: #e3f2fd;
+  }
+  .image-preview {
+    display: flex;
+    flex-wrap: wrap;
+    margin-top: 10px;
+  }
+  .image-preview img {
+    width: 80px;
+    height: 80px;
+    margin: 5px;
+    object-fit: cover;
+  }

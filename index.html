@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Générateur de Grilles de Bingo</title>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/axios/1.4.0/axios.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <link rel="stylesheet" href="style/style.css">
+</head>
+
+<body>
+  <div id="app" class="container">
+    <h1>Générateur de Grilles de Bingo</h1>
+
+    <div class="form-group">
+      <label for="numRows">Nombre de lignes:</label>
+      <input type="number" id="numRows" v-model="numRows">
+    </div>
+
+    <div class="form-group">
+      <label for="numCols">Nombre de colonnes:</label>
+      <input type="number" id="numCols" v-model="numCols">
+    </div>
+
+    <div class="form-group">
+      <label for="borderSize">Taille de la bordure:</label>
+      <input type="number" id="borderSize" v-model="borderSize">
+    </div>
+
+    <div class="form-group">
+      <label for="numImagesToFill">Nombre d'images à remplir:</label>
+      <input type="number" id="numImagesToFill" v-model="numImagesToFill">
+    </div>
+
+    <div class="form-group">
+      <label for="numGridsToGenerate">Nombre de grilles à générer:</label>
+      <input type="number" id="numGridsToGenerate" v-model="numGridsToGenerate">
+    </div>
+
+    <div class="form-group">
+      <label for="outputFilename">Nom du fichier de sortie:</label>
+      <input type="text" id="outputFilename" v-model="outputFilename" placeholder="bingo_grids_combined.pdf">
+    </div>
+
+    <div 
+      class="drop-zone"
+      @dragover.prevent="onDragOver"
+      @dragleave.prevent="onDragLeave"
+      @drop.prevent="onDrop"
+      @click="openFileDialog"
+      :class="{ 'dragover': isDragOver }"
+    >
+      Déposez vos images ici ou cliquez pour ouvrir l'explorateur de fichiers
+    </div>
+
+    <input type="file" ref="fileInput" multiple @change="onFileChange" style="display: none;">
+
+    <div class="image-preview">
+      <div v-for="(image, index) in images" :key="index">
+        <img :src="image.url" :alt="'Image ' + (index + 1)">
+      </div>
+    </div>
+
+    <button @click="generateGrids">Générer les grilles</button>
+
+    <button v-if="pdfGenerated" @click="downloadPdf">Télécharger le fichier PDF</button>
+  </div>
+
+  <script>
+    new Vue({
+      el: '#app',
+      data: {
+        numRows: 3,
+        numCols: 9,
+        borderSize: 5,
+        numImagesToFill: 15,
+        numGridsToGenerate: 100,
+        outputFilename: 'bingo_grids.pdf',
+        images: [],  
+        isDragOver: false,  
+        pdfGenerated: false,  
+        pdfDoc: null  
+      },
+      methods: {
+        onDragOver(event) {
+          this.isDragOver = true;
+        },
+        onDragLeave(event) {
+          this.isDragOver = false;
+        },
+        onDrop(event) {
+          this.isDragOver = false;
+          const files = Array.from(event.dataTransfer.files);
+          this.handleFiles(files);
+        },
+        openFileDialog() {
+          this.$refs.fileInput.click();
+        },
+        onFileChange(event) {
+          const files = Array.from(event.target.files);
+          this.handleFiles(files);
+        },
+        handleFiles(files) {
+          files.forEach(file => {
+            if (file.type.startsWith('image/')) {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                this.images.push({
+                  file: file,
+                  url: e.target.result
+                });
+              };
+              reader.readAsDataURL(file);
+            } else {
+              alert('Seules les images sont acceptées.');
+            }
+          });
+        },
+        generateGrids() {
+          if (this.images.length === 0) {
+            alert("Veuillez ajouter des images avant de générer les grilles.");
+            return;
+          }
+
+          const { jsPDF } = window.jspdf;
+          const pageWidth = 3000;  
+          const pageHeight = 2400;  
+          this.pdfDoc = new jsPDF('landscape', 'px', [pageWidth, pageHeight]);  
+
+          const cellWidth = (pageWidth - this.borderSize * (this.numCols - 1)) / this.numCols;
+          const cellHeight = (pageHeight - this.borderSize * (this.numRows - 1)) / this.numRows;
+
+
+          let imageIndex = 0;
+
+          for (let grid = 0; grid < this.numGridsToGenerate; grid++) {
+            for (let row = 0; row < this.numRows; row++) {
+              for (let col = 0; col < this.numCols; col++) {
+                if (imageIndex >= this.images.length) {
+                  imageIndex = 0;
+                }
+
+                const imgData = this.images[imageIndex].url;
+
+                const img = new Image();
+                img.src = imgData;
+                const imgWidth = img.width;
+                const imgHeight = img.height;
+
+                const imgRatio = imgWidth / imgHeight;
+                const cellRatio = cellWidth / cellHeight;
+
+                let drawWidth = cellWidth;
+                let drawHeight = cellHeight;
+
+                if (imgRatio > cellRatio) {
+                  drawWidth = cellWidth;
+                  drawHeight = cellWidth / imgRatio;
+                } else {
+                  drawHeight = cellHeight;
+                  drawWidth = cellHeight * imgRatio;
+                }
+
+                const xOffset = (cellWidth - drawWidth) / 2;
+                const yOffset = (cellHeight - drawHeight) / 2;
+
+                this.pdfDoc.addImage(
+                    imgData,
+                    'PNG',
+                    this.borderSize + col * (cellWidth) + xOffset,
+                    this.borderSize + row * (cellHeight) + yOffset,
+                    drawWidth,
+                    drawHeight
+                    );
+                imageIndex++;
+              }
+            }
+
+            if (grid < this.numGridsToGenerate - 1) {
+              this.pdfDoc.addPage();
+            }
+          }
+
+          this.pdfGenerated = true;
+          alert("Les grilles de bingo ont été générées avec succès !");
+        },
+        downloadPdf() {
+          if (this.pdfDoc) {
+            this.pdfDoc.save(this.outputFilename);  
+          }
+        }
+      }
+    });
+  </script>
+
+
+
+
+</body>
+</html>
